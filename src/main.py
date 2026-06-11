@@ -1,5 +1,6 @@
 import json
 from src.agents.requirement_parser import RequirementParserAgent
+from src.agents.gherkin_generator import GherkinGeneratorAgent
 
 requirement = """
 The application has a login page where users can enter their email and password.
@@ -11,7 +12,14 @@ After 5 failed attempts, the account should be locked and the user should see a
 message saying "Account locked. Please contact support".
 """
 
-agent = RequirementParserAgent()
-result = agent.run(requirement)
+# Agent 1 — Requirement Parser
+print("--- Running Requirement Parser ---")
+parser = RequirementParserAgent()
+parsed = parser.run(requirement)
+print(json.dumps(parsed, indent=2))
 
-print(json.dumps(result, indent=2))
+# Agent 2 — Gherkin Generator
+print("\n--- Running Gherkin Generator ---")
+gherkin = GherkinGeneratorAgent()
+feature_file = gherkin.run(parsed)
+print(feature_file)

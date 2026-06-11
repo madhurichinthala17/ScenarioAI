@@ -9,11 +9,11 @@ class RequirementParserAgent:
 
     def run(self, description: str) -> ParsedRequirement:
         user_prompt = f"""
-Requirement:
-{description}
+        Requirement:
+                {description}
 
-Return JSON only.
-"""
+            Return JSON only.
+        """
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
 
         parsed = json.loads(response)
