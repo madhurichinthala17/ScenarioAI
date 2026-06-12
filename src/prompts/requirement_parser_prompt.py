@@ -9,6 +9,7 @@ RULES:
 - edge_cases contains ALL failures, errors, and negative scenarios
 - Never mix success and failure in expected_result
 - If no edge cases exist return []
+- expected_result must be a plain string, never a nested object or dictionary
 
 Return this exact structure:
 {

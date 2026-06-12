@@ -34,3 +34,6 @@ print(json.dumps(final_state["parsed_requirement"], indent=2))
 
 print("\n--- Gherkin ---")
 print(final_state["gherkin"])
+
+print("\n--- File Plan ---")
+print(json.dumps(final_state["file_plan"], indent=2))
