@@ -1,6 +1,8 @@
 import json
-from src.agents.requirement_parser import RequirementParserAgent
-from src.agents.gherkin_generator import GherkinGeneratorAgent
+from src.graph.workflow import build_graph
+from src.utils.file_scanner import ensure_folders_exist
+
+ensure_folders_exist()
 
 requirement = """
 The application has a login page where users can enter their email and password.
@@ -12,14 +14,23 @@ After 5 failed attempts, the account should be locked and the user should see a
 message saying "Account locked. Please contact support".
 """
 
-# Agent 1 — Requirement Parser
-print("--- Running Requirement Parser ---")
-parser = RequirementParserAgent()
-parsed = parser.run(requirement)
-print(json.dumps(parsed, indent=2))
+graph = build_graph()
 
-# Agent 2 — Gherkin Generator
-print("\n--- Running Gherkin Generator ---")
-gherkin = GherkinGeneratorAgent()
-feature_file = gherkin.run(parsed)
-print(feature_file)
+final_state = graph.invoke({
+    "requirement": requirement,
+    "parsed_requirement": None,
+    "gherkin": None,
+    "file_plan": None,
+    "pom_content": None,
+    "driver_content": None,
+    "steps_content": None,
+    "validation_passed": None,
+    "validation_errors": [],
+    "retry_count": 0
+})
+
+print("\n--- Parsed Requirement ---")
+print(json.dumps(final_state["parsed_requirement"], indent=2))
+
+print("\n--- Gherkin ---")
+print(final_state["gherkin"])
