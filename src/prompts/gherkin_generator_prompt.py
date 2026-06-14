@@ -10,8 +10,10 @@ RULES:
 - Every Scenario must have Given, When, Then
 - Given = state before action (never the outcome)
 - When = the action taken
-- Then = the result
+-  Then steps must include the specific outcome, never generic phrases
 - ALWAYS use third person (the user, the admin) never "I" or "my"
 - Only use Scenario Outline when there are genuinely different data sets
 - Feature name comes from the action field
+- NEVER use Scenario Outline unless you also provide an Examples table with actual data rows
+- When in doubt use plain Scenario not Scenario Outline
 """

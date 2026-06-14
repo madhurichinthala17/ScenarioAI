@@ -19,6 +19,7 @@ NAMING RULES:
 - Profile, settings, account = "profile"
 - Use short lowercase single words only
 - Never use generic names like "test" or "feature"
+- File names MUST match the functionality field exactly
 
 RULES:
 - Output ONLY valid JSON, no explanations, no markdown
