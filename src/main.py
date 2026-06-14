@@ -27,12 +27,12 @@ final_state = graph.invoke({
     "validation_passed": None,
     "validation_errors": [],
     "retry_count": 0,
-    "failed_agent": None
+    "failed_agent": None,
+    "files_written": []
 })
 
-print("\n--- Validation Result ---")
-print(f"Passed: {final_state['validation_passed']}")
-if final_state['validation_errors']:
-    print("Errors:")
-    for error in final_state['validation_errors']:
-        print(f"  - {error}")
+print("\n--- Pipeline Complete ---")
+print(f"Validation passed: {final_state['validation_passed']}")
+print(f"Files written: {len(final_state.get('files_written', []))}")
+for f in final_state.get('files_written', []):
+    print(f"  → generated_tests/{f}")
