@@ -43,3 +43,6 @@ print(final_state["pom_content"])
 
 print("\n--- Driver ---")
 print(final_state["driver_content"])
+
+print("\n--- Step Definitions ---")
+print(final_state["steps_content"])

@@ -5,12 +5,14 @@ from src.agents.gherkin_generator import GherkinGeneratorAgent
 from src.agents.file_planner import FilePlannerAgent
 from src.agents.pom_generator import POMGeneratorAgent
 from src.agents.driver_generator import DriverGeneratorAgent
+from src.agents.stepdefinition_generator import StepDefinitionGeneratorAgent
 
 parser = RequirementParserAgent()
 gherkin_agent = GherkinGeneratorAgent()
 file_planner_agent = FilePlannerAgent()
 pom_agent = POMGeneratorAgent()
 driver_agent = DriverGeneratorAgent()
+step_agent = StepDefinitionGeneratorAgent()
 
 
 def requirement_parser_node(state: ScenarioAIState) -> dict:
@@ -45,6 +47,16 @@ def driver_generator_node(state: ScenarioAIState) -> dict:
     )}
 
 
+def step_definition_generator_node(state: ScenarioAIState) -> dict:
+    print("--- Step Definition Generator ---")
+    return {"steps_content": step_agent.run(
+        state['gherkin'],
+        state['pom_content'],
+        state['driver_content'],
+        state['file_plan']
+    )}
+
+
 def build_graph():
     graph = StateGraph(ScenarioAIState)
 
@@ -53,12 +65,14 @@ def build_graph():
     graph.add_node("file_planner", file_planner_node)
     graph.add_node("pom_generator", pom_generator_node)
     graph.add_node("driver_generator", driver_generator_node)
+    graph.add_node("step_definition_generator", step_definition_generator_node)
 
     graph.set_entry_point("requirement_parser")
     graph.add_edge("requirement_parser", "gherkin_generator")
     graph.add_edge("gherkin_generator", "file_planner")
     graph.add_edge("file_planner", "pom_generator")
     graph.add_edge("pom_generator", "driver_generator")
-    graph.add_edge("driver_generator", END)
+    graph.add_edge("driver_generator", "step_definition_generator")
+    graph.add_edge("step_definition_generator", END)
 
     return graph.compile()
