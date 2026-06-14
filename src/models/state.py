@@ -41,3 +41,4 @@ class ScenarioAIState(TypedDict):
     validation_passed: Optional[bool]
     validation_errors: Annotated[List[str], operator.add]
     retry_count: Annotated[int, operator.add]
+    failed_agent: Optional[str]

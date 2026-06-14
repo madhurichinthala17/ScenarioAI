@@ -6,6 +6,7 @@ from src.agents.file_planner import FilePlannerAgent
 from src.agents.pom_generator import POMGeneratorAgent
 from src.agents.driver_generator import DriverGeneratorAgent
 from src.agents.stepdefinition_generator import StepDefinitionGeneratorAgent
+from src.agents.validator import ValidatorAgent
 
 parser = RequirementParserAgent()
 gherkin_agent = GherkinGeneratorAgent()
@@ -13,6 +14,9 @@ file_planner_agent = FilePlannerAgent()
 pom_agent = POMGeneratorAgent()
 driver_agent = DriverGeneratorAgent()
 step_agent = StepDefinitionGeneratorAgent()
+validator = ValidatorAgent()
+
+MAX_RETRIES = 2
 
 
 def requirement_parser_node(state: ScenarioAIState) -> dict:
@@ -57,6 +61,50 @@ def step_definition_generator_node(state: ScenarioAIState) -> dict:
     )}
 
 
+def validator_node(state: ScenarioAIState) -> dict:
+    print("--- Validator ---")
+    result = validator.run(
+        state['gherkin'],
+        state['pom_content'],
+        state['driver_content'],
+        state['steps_content']
+    )
+
+    # Determine which agent caused failures
+    failed_agent = None
+    if not result['passed']:
+        errors = result['errors']
+        if any("POM" in e or "Method existence" in e for e in errors):
+            failed_agent = "pom_generator"
+        elif any("Driver" in e or "Driver existence" in e for e in errors):
+            failed_agent = "driver_generator"
+        elif any("Step" in e or "Step coverage" in e for e in errors):
+            failed_agent = "stepdefinition_generator"
+        elif any("Gherkin" in e for e in errors):
+            failed_agent = "gherkin_generator"
+
+    return {
+        "validation_passed": result['passed'],
+        "validation_errors": result['errors'],
+        "failed_agent": failed_agent,
+        "retry_count": 0 if result['passed'] else 1
+    }
+
+
+def should_retry(state: ScenarioAIState) -> str:
+    """Route after validation — retry or end."""
+    if state['validation_passed']:
+        return "end"
+    if state.get('retry_count', 0) >= MAX_RETRIES:
+        print(f" Max retries reached — ending with validation errors")
+        return "end"
+    failed = state.get('failed_agent')
+    if failed:
+        print(f"Retrying from: {failed}")
+        return failed
+    return "end"
+
+
 def build_graph():
     graph = StateGraph(ScenarioAIState)
 
@@ -66,13 +114,28 @@ def build_graph():
     graph.add_node("pom_generator", pom_generator_node)
     graph.add_node("driver_generator", driver_generator_node)
     graph.add_node("step_definition_generator", step_definition_generator_node)
+    graph.add_node("validator", validator_node)
 
+    # Main pipeline edges
     graph.set_entry_point("requirement_parser")
     graph.add_edge("requirement_parser", "gherkin_generator")
     graph.add_edge("gherkin_generator", "file_planner")
     graph.add_edge("file_planner", "pom_generator")
     graph.add_edge("pom_generator", "driver_generator")
     graph.add_edge("driver_generator", "step_definition_generator")
-    graph.add_edge("step_definition_generator", END)
+    graph.add_edge("step_definition_generator", "validator")
+
+    # Conditional routing after validation
+    graph.add_conditional_edges(
+        "validator",
+        should_retry,
+        {
+            "end": END,
+            "pom_generator": "pom_generator",
+            "driver_generator": "driver_generator",
+            "step_definition_generator": "step_definition_generator",
+            "gherkin_generator": "gherkin_generator"
+        }
+    )
 
     return graph.compile()

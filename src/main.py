@@ -26,23 +26,13 @@ final_state = graph.invoke({
     "steps_content": None,
     "validation_passed": None,
     "validation_errors": [],
-    "retry_count": 0
+    "retry_count": 0,
+    "failed_agent": None
 })
 
-print("\n--- Parsed Requirement ---")
-print(json.dumps(final_state["parsed_requirement"], indent=2))
-
-print("\n--- Gherkin ---")
-print(final_state["gherkin"])
-
-print("\n--- File Plan ---")
-print(json.dumps(final_state["file_plan"], indent=2))
-
-print("\n--- POM ---")
-print(final_state["pom_content"])
-
-print("\n--- Driver ---")
-print(final_state["driver_content"])
-
-print("\n--- Step Definitions ---")
-print(final_state["steps_content"])
+print("\n--- Validation Result ---")
+print(f"Passed: {final_state['validation_passed']}")
+if final_state['validation_errors']:
+    print("Errors:")
+    for error in final_state['validation_errors']:
+        print(f"  - {error}")
