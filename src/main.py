@@ -40,3 +40,6 @@ print(json.dumps(final_state["file_plan"], indent=2))
 
 print("\n--- POM ---")
 print(final_state["pom_content"])
+
+print("\n--- Driver ---")
+print(final_state["driver_content"])
