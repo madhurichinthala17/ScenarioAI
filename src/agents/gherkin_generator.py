@@ -1,6 +1,7 @@
 from src.core.llm_client import LLMClient
 from src.prompts.gherkin_generator_prompt import SYSTEM_PROMPT
 from src.models.state import ParsedRequirement
+import re
 
 
 class GherkinGeneratorAgent:
@@ -19,10 +20,12 @@ class GherkinGeneratorAgent:
         """
 
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
-        self._validate(response)
-        return response
+        # Strip any markdown the model added
+        cleaned = re.sub(r"```gherkin|```", "", response).strip()
+        self._validate(cleaned)
+        return cleaned
 
     def _validate(self, gherkin: str):
-        for keyword in ["Feature:", "Scenario:", "Given", "When", "Then"]:
+        for keyword in ["Feature:", "Scenario", "Given", "When", "Then"]:
             if keyword not in gherkin:
                 raise ValueError(f"Gherkin missing keyword: '{keyword}'")

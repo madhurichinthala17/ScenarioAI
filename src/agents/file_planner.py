@@ -3,7 +3,7 @@ import re
 from src.core.llm_client import LLMClient
 from src.prompts.file_planner_prompt import SYSTEM_PROMPT
 from src.models.state import FilePlan
-from src.utils.file_scanner import scan_existing_files
+from src.tools.file_planner_tools import FILE_PLANNER_TOOLS
 
 
 class FilePlannerAgent:
@@ -11,31 +11,22 @@ class FilePlannerAgent:
         self.llm = LLMClient()
 
     def run(self, gherkin: str) -> FilePlan:
-        existing_files = scan_existing_files()
-
-        # Token optimization: only send file names first
-        # If no files exist, skip entirely
-        if existing_files:
-            file_summary = "Existing test files:\n" + "\n".join(
-                f"- {path}" for path in existing_files.keys()
-            )
-        else:
-            file_summary = "No existing test files."
-
         user_prompt = f"""
-        
-        New Gherkin scenarios:
+        New Gherkin scenarios to process:
 
         {gherkin}
 
-            ---
-
-        {file_summary}
-
-        Analyze and return your decision as JSON.
+        First call scan_directory to check what already exists.
+        If related files exist, call read_file to read their contents.
+        Then return your JSON decision.
         """
 
-        response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
+        response = self.llm.invoke_with_tools(
+            SYSTEM_PROMPT,
+            user_prompt,
+            FILE_PLANNER_TOOLS
+        )
+
         cleaned = re.sub(r"```json|```", "", response).strip()
         plan = json.loads(cleaned)
         self._validate(plan)
