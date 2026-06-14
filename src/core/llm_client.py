@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 class LLMClient:
     def __init__(self):
-        self.llm = ChatOllama(model="llama3.2", temperature=0)
+        self.llm = ChatOllama(model="qwen2.5", temperature=0)
 
     def invoke(self, system_prompt: str, user_prompt: str) -> str:
         messages = [

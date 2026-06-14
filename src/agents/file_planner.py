@@ -29,6 +29,7 @@ class FilePlannerAgent:
 
         cleaned = re.sub(r"```json|```", "", response).strip()
         plan = json.loads(cleaned)
+        plan = self._enforce_naming(plan)
         self._validate(plan)
         return plan
 
@@ -44,3 +45,15 @@ class FilePlannerAgent:
 
         if plan["decision"] not in ["create", "insert", "skip", "overwrite"]:
             raise ValueError(f"Invalid decision: '{plan['decision']}'")
+
+    def _enforce_naming(self, plan: dict) -> dict:
+        """
+        Force file names to match functionality field. 
+        Never trust LLM for this.
+        """
+        name = plan["functionality"]
+        plan["feature_file"] = f"features/{name}.feature"
+        plan["steps_file"] = f"step_definitions/{name}_steps.py"
+        plan["pages_file"] = f"pages/{name}_page.py"
+        plan["driver_file"] = f"driver/{name}_helper.py"
+        return plan
