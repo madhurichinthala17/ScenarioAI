@@ -30,26 +30,28 @@ class StepDefinitionGeneratorAgent:
         pom_signatures = self._extract_signatures(pom_content)
         driver_signatures = self._extract_signatures(driver_content)
 
-        user_prompt = f"""Generate step definitions for this functionality: {functionality}
+        user_prompt = f"""
+        Generate step definitions for this functionality: {functionality}
 
-Page object class: {class_name} from pages.{page_module}
-Driver module: {driver_module}
+        Page object class: {class_name} from pages.{page_module}
+        Driver module: {driver_module}
 
-Available page object methods:
-{pom_signatures}
+        Available page object methods:
+        {pom_signatures}
 
-Available driver functions:
-{driver_signatures}
+        Available driver functions:
+        {driver_signatures}
 
-Gherkin scenarios to implement:
-{gherkin}
+        Gherkin scenarios to implement:
+        {gherkin}
 
-Match every Gherkin step exactly.
-Given steps → driver setup_ functions
-When steps  → driver perform_ functions
-Then steps  → assert page object get_/is_ methods
+        Match every Gherkin step exactly.
+        Given steps → driver setup_ functions
+        When steps  → driver perform_ functions
+        Then steps  → assert page object get_/is_ methods
 
-Return Python code only."""
+        Return Python code only.
+        """
 
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
         cleaned = re.sub(r"```python|```", "", response).strip()

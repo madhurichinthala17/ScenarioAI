@@ -23,10 +23,12 @@ LAYER RESPONSIBILITY:
 - When  → executes actions using driver perform_ functions
 - Then  → asserts outcomes using page object get_/is_ methods
 
-OUTPUT FORMAT:
+OUTPUT FORMAT — imports section:
 from behave import given, when, then
-from pages.<page_module> import <PageClass>
 from driver.<driver_module> import *
+
+DO NOT import the page class directly.
+Access it through context only: context.<page_object>
 
 @given("<exact gherkin step text>")
 def step_impl(context):

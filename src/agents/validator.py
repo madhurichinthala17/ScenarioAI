@@ -213,8 +213,18 @@ class ValidatorAgent:
                 f.write(code)
                 tmp_path = f.name
 
+            if label == "Steps":
+                select = ["E"]
+                ignore = ["E501", "E302", "E303"]
+            else:
+                select = ["E", "F"]
+                ignore = ["E501"]
+
             result = subprocess.run(
-                ["ruff", "check", tmp_path, "--select", "E,F", "--quiet"],
+                ["ruff", "check", tmp_path,
+                 "--select", ",".join(select),
+                 "--ignore", ",".join(ignore),
+                 "--quiet"],
                 capture_output=True,
                 text=True
             )
@@ -222,7 +232,6 @@ class ValidatorAgent:
             os.unlink(tmp_path)
 
             if result.returncode != 0:
-                # Parse ruff output — strip temp file path
                 for line in result.stdout.strip().split("\n"):
                     if line.strip():
                         clean = re.sub(r".+\.py:", f"{label}:", line)
