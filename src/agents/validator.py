@@ -5,6 +5,9 @@ import tempfile
 import os
 from typing import List
 from behave.parser import Parser
+from src.core.logger import get_logger
+
+log = get_logger(__name__)
 
 
 class ValidatorAgent:
@@ -33,11 +36,11 @@ class ValidatorAgent:
         passed = len(errors) == 0
 
         if passed:
-            print("Validator: All checks passed")
+            log.info("Validator: all checks passed")
         else:
-            print(f"Validator: {len(errors)} error(s) found")
+            log.warning("Validator: %d error(s) found", len(errors))
             for error in errors:
-                print(f"  - {error}")
+                log.warning("  - %s", error)
 
         return {
             "passed": passed,

@@ -8,6 +8,10 @@ from src.agents.driver_generator import DriverGeneratorAgent
 from src.agents.stepdefinition_generator import StepDefinitionGeneratorAgent
 from src.agents.validator import ValidatorAgent
 from src.agents.file_writer import FileWriterAgent
+from src.config import settings
+from src.core.logger import get_logger
+
+log = get_logger(__name__)
 
 parser = RequirementParserAgent()
 gherkin_agent = GherkinGeneratorAgent()
@@ -18,26 +22,23 @@ step_agent = StepDefinitionGeneratorAgent()
 validator = ValidatorAgent()
 file_writer = FileWriterAgent()
 
-MAX_RETRIES = 2
-
-
 def requirement_parser_node(state: ScenarioAIState) -> dict:
-    print("--- Requirement Parser ---")
+    log.info("Node: requirement_parser")
     return {"parsed_requirement": parser.run(state['requirement'])}
 
 
 def gherkin_generator_node(state: ScenarioAIState) -> dict:
-    print("--- Gherkin Generator ---")
+    log.info("Node: gherkin_generator")
     return {"gherkin": gherkin_agent.run(state['parsed_requirement'])}
 
 
 def file_planner_node(state: ScenarioAIState) -> dict:
-    print("--- File Planner ---")
+    log.info("Node: file_planner")
     return {"file_plan": file_planner_agent.run(state['gherkin'])}
 
 
 def pom_generator_node(state: ScenarioAIState) -> dict:
-    print("--- POM Generator ---")
+    log.info("Node: pom_generator")
     return {"pom_content": pom_agent.run(
         state['gherkin'],
         state['file_plan']['functionality']
@@ -45,7 +46,7 @@ def pom_generator_node(state: ScenarioAIState) -> dict:
 
 
 def driver_generator_node(state: ScenarioAIState) -> dict:
-    print("--- Driver Generator ---")
+    log.info("Node: driver_generator")
     return {"driver_content": driver_agent.run(
         state['gherkin'],
         state['file_plan']['functionality'],
@@ -54,7 +55,7 @@ def driver_generator_node(state: ScenarioAIState) -> dict:
 
 
 def step_definition_generator_node(state: ScenarioAIState) -> dict:
-    print("--- Step Definition Generator ---")
+    log.info("Node: step_definition_generator")
     return {"steps_content": step_agent.run(
         state['gherkin'],
         state['pom_content'],
@@ -100,12 +101,12 @@ def file_writer_node(state: ScenarioAIState) -> dict:
 def should_retry(state: ScenarioAIState) -> str:
     if state['validation_passed']:
         return "file_writer"
-    if state.get('retry_count', 0) >= MAX_RETRIES:
-        print("Max retries reached — ending with validation errors")
+    if state.get('retry_count', 0) >= settings.max_retries:
+        log.warning("Max retries (%d) reached — ending with validation errors", settings.max_retries)
         return "end"
     failed = state.get('failed_agent')
     if failed:
-        print(f"Retrying from: {failed}")
+        log.info("Retrying from node: %s", failed)
         return failed
     return "end"
 
