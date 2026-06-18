@@ -31,6 +31,7 @@ def run(requirement: str) -> dict:
         "steps_content": None,
         "validation_passed": None,
         "validation_errors": [],
+        "validation_phase": 1,
         "retry_count": 0,
         "failed_agent": None,
         "files_written": [],

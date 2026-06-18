@@ -40,6 +40,9 @@ class ScenarioAIState(TypedDict):
     steps_content: Optional[str]
     validation_passed: Optional[bool]
     validation_errors: Annotated[List[str], operator.add]
+    # 1 = phase 1 failed (AST/Ruff/Gherkin), 2 = phase 2 failed (behave --dry-run)
+    # Informational only — routing logic uses failed_agent, not this field
+    validation_phase: int
     retry_count: Annotated[int, operator.add]
     failed_agent: Optional[str]
     files_written: Optional[List[str]]

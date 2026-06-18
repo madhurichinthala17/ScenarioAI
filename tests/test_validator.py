@@ -104,3 +104,48 @@ def test_requirement_validation_strips_whitespace():
     from src.main import validate_requirement
     result = validate_requirement("  login flow  ")
     assert result == "login flow"
+
+
+# ─── Phase 2 tests ────────────────────────────────────────────────────────────
+
+def test_phase1_errors_skip_phase2():
+    # If phase 1 fails, the result should say phase=1 — phase 2 never ran
+    bad_pom = "this is not valid python!!!"
+    result = ValidatorAgent().run(VALID_GHERKIN, bad_pom, VALID_DRIVER, VALID_STEPS)
+    assert result["passed"] is False
+    assert result["phase"] == 1
+
+
+def test_phase2_runs_when_phase1_passes():
+    # When all phase 1 checks pass, phase 2 should also run
+    # Valid inputs should pass both phases
+    result = ValidatorAgent().run(VALID_GHERKIN, VALID_POM, VALID_DRIVER, VALID_STEPS)
+    assert result["passed"] is True
+    # phase=2 confirms behave --dry-run ran and passed
+    assert result["phase"] == 2
+
+
+def test_phase2_catches_undefined_step():
+    # Steps file is missing the decorator for one of the Gherkin steps.
+    # Phase 1 regex check will miss this because the step text looks similar,
+    # but behave --dry-run will catch the exact mismatch.
+    steps_with_wrong_decorator = """\
+from behave import given, when, then
+
+@given('the user is on the login page')
+def step_given(context):
+    pass
+
+@when('the user enters valid credentials')
+def step_when(context):
+    pass
+
+@then('something completely different')
+def step_then(context):
+    pass
+"""
+    result = ValidatorAgent().run(VALID_GHERKIN, VALID_POM, VALID_DRIVER, steps_with_wrong_decorator)
+    assert result["passed"] is False
+    # This could be caught by phase 1 (step coverage) or phase 2 (behave --dry-run)
+    # Either way it must be caught
+    assert len(result["errors"]) > 0

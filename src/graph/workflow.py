@@ -88,6 +88,7 @@ def validator_node(state: ScenarioAIState) -> dict:
     return {
         "validation_passed": result['passed'],
         "validation_errors": result['errors'],
+        "validation_phase": result.get('phase', 1),
         "failed_agent": failed_agent,
         "retry_count": 0 if result['passed'] else 1
     }
