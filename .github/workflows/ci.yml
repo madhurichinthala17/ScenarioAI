@@ -1,0 +1,39 @@
+# Runs on every push to master and every PR.
+# Purpose: catch broken code before it merges.
+# If this workflow is red, do not merge.
+
+name: ScenarioAI CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    # Triggers on PRs targeting master — including the ones ScenarioAI creates
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      # --dev installs pytest + ruff (listed under [project.optional-dependencies].dev)
+      # The runner doesn't need langchain-openai for tests — Ollama isn't available either.
+      # Tests mock all LLM calls so no provider is needed in CI.
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check src/
+
+      - name: Test (pytest)
+        run: uv run pytest tests/ -v
