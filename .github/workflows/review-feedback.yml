@@ -1,0 +1,102 @@
+# Triggered when a reviewer submits a PR review with "Request Changes".
+#
+# Full cycle:
+#   1. Reviewer opens the ScenarioAI-generated PR
+#   2. Adds inline comments on any number of lines across any files
+#   3. Submits the review as "Request Changes"
+#   4. This workflow fires, collects ALL inline comments from that review
+#   5. Groups comments by file — fixes each file in one LLM call
+#   6. Commits all fixes in a single commit
+#   7. Re-requests review from the original reviewer
+#   8. Reviewer gets a GitHub notification: "ScenarioAI Bot requested your review"
+
+name: Apply Review Feedback
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply-fixes:
+    runs-on: ubuntu-latest
+
+    # Only run when the reviewer explicitly requested changes — not on approvals or comments
+    if: github.event.review.state == 'changes_requested'
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # Check out the PR's branch, not master — we need to edit and push back to it
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Fetch all inline comments from this review, group by file,
+      # run ReviewAgent for each file with ALL its comments in one LLM call
+      - name: Apply all review fixes
+        env:
+          LLM_PROVIDER: openai
+          LLM_MODEL: gpt-4o-mini
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # GH_TOKEN lets apply_review.py call gh api without extra setup
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          uv run python -m src.cli.apply_review \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --review-id "${{ github.event.review.id }}"
+
+      # Commit all fixed files in one commit
+      - name: Commit all fixes
+        run: |
+          git config user.name "ScenarioAI Bot"
+          git config user.email "scenarioai-bot@users.noreply.github.com"
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes — fixes may have already been applied or no files changed"
+            exit 0
+          fi
+
+          git add generated_tests/
+          git commit -m "fix: apply review feedback from @${{ github.event.review.user.login }}
+
+          Review ID: ${{ github.event.review.id }}
+          PR: #${{ github.event.pull_request.number }}
+
+          All inline comments from this review have been applied in one pass."
+
+          git push origin HEAD
+
+      # Re-request review from the person who submitted the changes_requested review.
+      # This marks their previous review as outdated and sends them a notification.
+      - name: Re-request review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --add-reviewer "${{ github.event.review.user.login }}"
+
+      # Post a summary comment on the PR so everyone knows what was fixed
+      - name: Post summary comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "**ScenarioAI Bot** applied all inline feedback from @${{ github.event.review.user.login }}'s review.
+
+          Review all changes in the latest commit, then re-approve when satisfied."

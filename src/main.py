@@ -26,16 +26,18 @@ def validate_requirement(req: str) -> str:
     return req.strip()
 
 
-def run(requirement: str) -> dict:
+def run(requirement: str, app_url: str = None) -> dict:
     requirement = validate_requirement(requirement)
     ensure_folders_exist()
 
-    log.info("Starting ScenarioAI pipeline")
+    log.info("Starting ScenarioAI pipeline (app_url=%s)", app_url or "none")
     graph = build_graph()
 
     final_state = graph.invoke({
         "requirement": requirement,
+        "app_url": app_url,
         "parsed_requirement": None,
+        "exploration_report": None,
         "gherkin": None,
         "file_plan": None,
         "pom_content": None,
@@ -47,6 +49,7 @@ def run(requirement: str) -> dict:
         "retry_count": 0,
         "failed_agent": None,
         "files_written": [],
+        "fail_open": False,
     })
 
     log.info(
@@ -70,18 +73,25 @@ if __name__ == "__main__":
         default=None,
         help="Natural language requirement to generate tests for",
     )
+    parser.add_argument(
+        "--app-url",
+        type=str,
+        default=None,
+        help="URL of a running app for the Explorer to collect real locators (optional)",
+    )
     args = parser.parse_args()
 
-    # Use CLI arg if provided, otherwise fall back to the built-in example
     requirement = args.requirement or DEFAULT_REQUIREMENT
+    final_state = run(requirement, app_url=args.app_url)
 
-    final_state = run(requirement)
-
-    # Exit with code 1 if validation failed — GitHub Actions reads this exit code.
-    # A non-zero exit marks the workflow step as failed and skips the commit + PR steps.
     if not final_state.get("validation_passed"):
         errors = final_state.get("validation_errors", [])
-        log.error("Pipeline failed — %d validation error(s)", len(errors))
-        for e in errors:
-            log.error("  %s", e)
-        sys.exit(1)
+        if final_state.get("fail_open"):
+            # Files were written with WARNING headers — PR will be created as draft.
+            # Exit 0 so the GitHub Actions workflow still commits and creates the PR.
+            log.warning("Pipeline completed as fail-open — %d error(s) in generated files", len(errors))
+        else:
+            log.error("Pipeline failed — %d validation error(s)", len(errors))
+            for e in errors:
+                log.error("  %s", e)
+            sys.exit(1)

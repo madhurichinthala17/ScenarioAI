@@ -1,12 +1,8 @@
-import re
-from src.core.llm_client import LLMClient
+from src.agents.base import BaseAgent
 from src.prompts.stepdefinition_generator_prompt import SYSTEM_PROMPT
 
 
-class StepDefinitionGeneratorAgent:
-    def __init__(self):
-        self.llm = LLMClient()
-
+class StepDefinitionGeneratorAgent(BaseAgent):
     def run(
         self,
         gherkin: str,
@@ -54,7 +50,7 @@ class StepDefinitionGeneratorAgent:
         """
 
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
-        cleaned = re.sub(r"```python|```", "", response).strip()
+        cleaned = self._strip(response)
         self._validate(cleaned)
         return cleaned
 

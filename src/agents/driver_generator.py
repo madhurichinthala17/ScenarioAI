@@ -1,13 +1,9 @@
-import re
-from src.core.llm_client import LLMClient
+from src.agents.base import BaseAgent
 from src.prompts.driver_generator_prompt import SYSTEM_PROMPT
 from src.prompts.driver_consolidator_prompt import CONSOLIDATION_PROMPT
 
 
-class DriverGeneratorAgent:
-    def __init__(self):
-        self.llm = LLMClient()
-
+class DriverGeneratorAgent(BaseAgent):
     def run(
         self,
         gherkin: str,
@@ -41,7 +37,7 @@ class DriverGeneratorAgent:
         """
 
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
-        cleaned = re.sub(r"```python|```", "", response).strip()
+        cleaned = self._strip(response)
         # Step 2 — Consolidate duplicates
         consolidation_prompt = f"""
         Review and consolidate this driver helper module:
@@ -50,7 +46,7 @@ class DriverGeneratorAgent:
         """
 
         consolidated = self.llm.invoke(CONSOLIDATION_PROMPT, consolidation_prompt)
-        final_driver = re.sub(r"```python|```", "", consolidated).strip()
+        final_driver = self._strip(consolidated)
 
         self._validate(final_driver)
         return final_driver

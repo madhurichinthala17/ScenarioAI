@@ -1,13 +1,13 @@
 import os
 from langchain_core.tools import tool
-from src.utils.file_scanner import GENERATED_TESTS_DIR
+from src.utils.file_scanner import GENERATED_TESTS_DIR, FOLDERS
 
 
 @tool
 def scan_directory() -> str:
     """List all existing test files in generated_tests/ folders."""
     files = []
-    for folder in ["features", "step_definitions", "pages", "driver"]:
+    for folder in FOLDERS:
         path = os.path.join(GENERATED_TESTS_DIR, folder)
         if os.path.exists(path):
             for filename in os.listdir(path):

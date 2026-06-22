@@ -1,15 +1,11 @@
 import json
-import re
-from src.core.llm_client import LLMClient
+from src.agents.base import BaseAgent
 from src.prompts.file_planner_prompt import SYSTEM_PROMPT
 from src.models.state import FilePlan
 from src.tools.file_planner_tools import FILE_PLANNER_TOOLS
 
 
-class FilePlannerAgent:
-    def __init__(self):
-        self.llm = LLMClient()
-
+class FilePlannerAgent(BaseAgent):
     def run(self, gherkin: str) -> FilePlan:
         user_prompt = f"""
         New Gherkin scenarios to process:
@@ -27,8 +23,7 @@ class FilePlannerAgent:
             FILE_PLANNER_TOOLS
         )
 
-        cleaned = re.sub(r"```json|```", "", response).strip()
-        plan = json.loads(cleaned)
+        plan = json.loads(self._strip(response))
         plan = self._enforce_naming(plan)
         self._validate(plan)
         return plan

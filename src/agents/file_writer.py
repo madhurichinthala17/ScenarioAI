@@ -1,74 +1,74 @@
 import os
-from src.utils.file_scanner import write_file, GENERATED_TESTS_DIR
+from pathlib import Path
+
+from src.core.exceptions import FileWriteError
+from src.core.logger import get_logger
+from src.utils.file_scanner import GENERATED_TESTS_DIR
+
+log = get_logger(__name__)
+
+# Header injected at the top of every file when fail_open=True.
+# Immediately visible when a reviewer opens the file in GitHub's diff view.
+_WARNING_HEADER = """\
+# =============================================================================
+# WARNING: ScenarioAI validation failed — this file was written as FAIL-OPEN
+# Review the errors listed in the PR description before merging.
+# =============================================================================
+
+"""
 
 
 class FileWriterAgent:
 
-    def run(self, state: dict) -> dict:
-        file_plan = state['file_plan']
-        decision = file_plan['decision']
+    def run(self, state: dict, fail_open: bool = False) -> dict:
+        file_plan = state["file_plan"]
+        decision = file_plan["decision"]
 
-        print(f"--- File Writer --- [{decision.upper()}]")
+        log.info("Node: file_writer [decision=%s, fail_open=%s]", decision.upper(), fail_open)
 
         if decision == "skip":
-            print("⏭️  Skipping — all scenarios already exist")
-            return {"files_written": []}
+            log.info("File writer: skipping — all scenarios already exist")
+            return {"files_written": [], "fail_open": fail_open}
 
         files_written = []
 
-        # Write feature file
-        if state.get('gherkin'):
-            self._write(
-                file_plan['feature_file'],
-                state['gherkin'],
-                decision
-            )
-            files_written.append(file_plan['feature_file'])
+        pairs = [
+            (state.get("gherkin"),        file_plan["feature_file"],  False),
+            (state.get("pom_content"),     file_plan["pages_file"],    True),
+            (state.get("driver_content"),  file_plan["driver_file"],   True),
+            (state.get("steps_content"),   file_plan["steps_file"],    True),
+        ]
 
-        # Write POM
-        if state.get('pom_content'):
-            self._write(
-                file_plan['pages_file'],
-                state['pom_content'],
-                decision
-            )
-            files_written.append(file_plan['pages_file'])
+        for content, relative_path, is_python in pairs:
+            if not content:
+                continue
+            try:
+                self._write(relative_path, content, decision, fail_open and is_python)
+                files_written.append(relative_path)
+                log.info("  wrote: generated_tests/%s", relative_path)
+            except FileWriteError as e:
+                log.error("File write failed: %s", e)
+                raise
 
-        # Write driver
-        if state.get('driver_content'):
-            self._write(
-                file_plan['driver_file'],
-                state['driver_content'],
-                decision
-            )
-            files_written.append(file_plan['driver_file'])
+        log.info("File writer: wrote %d file(s)", len(files_written))
+        return {"files_written": files_written, "fail_open": fail_open}
 
-        # Write step definitions
-        if state.get('steps_content'):
-            self._write(
-                file_plan['steps_file'],
-                state['steps_content'],
-                decision
-            )
-            files_written.append(file_plan['steps_file'])
+    def _write(self, relative_path: str, content: str, decision: str, add_warning: bool):
+        base = Path(GENERATED_TESTS_DIR).resolve()
+        target = (base / relative_path).resolve()
 
-        print(f"Written {len(files_written)} files:")
-        for f in files_written:
-            print(f"   → generated_tests/{f}")
+        # Path traversal guard: ensure the resolved path is still inside generated_tests/
+        # An LLM could theoretically return "../../etc/passwd" as a filename.
+        if not str(target).startswith(str(base)):
+            raise FileWriteError(f"Path traversal blocked: {relative_path}")
 
-        return {"files_written": files_written}
+        target.parent.mkdir(parents=True, exist_ok=True)
 
-    def _write(self, relative_path: str, content: str, decision: str):
-        """
-        Write content based on decision type.
-        CREATE/OVERWRITE → write fresh
-        INSERT → append new content to existing file
-        """
-        full_path = os.path.join(GENERATED_TESTS_DIR, relative_path)
+        final_content = (_WARNING_HEADER + content) if add_warning else content
 
-        if decision == "insert" and os.path.exists(full_path):
-            with open(full_path, "a", encoding="utf-8") as f:
-                f.write("\n\n")
-                f.write(content)
+        if decision == "insert" and target.exists():
+            with open(target, "a", encoding="utf-8") as f:
+                f.write("\n\n" + final_content)
         else:
-            write_file(relative_path, content)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(final_content)

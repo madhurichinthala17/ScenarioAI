@@ -1,19 +1,15 @@
 import json
-import re
-from src.core.llm_client import LLMClient
+from src.agents.base import BaseAgent
+from src.core.text import normalize_to_str_list
 from src.prompts.requirement_parser_prompt import SYSTEM_PROMPT
 from src.models.state import ParsedRequirement
 
 
-class RequirementParserAgent:
-    def __init__(self):
-        self.llm = LLMClient()
-
+class RequirementParserAgent(BaseAgent):
     def run(self, requirement: str) -> ParsedRequirement:
         user_prompt = f"Requirement:\n{requirement}\n\nReturn JSON only."
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
-        cleaned = re.sub(r"```json|```", "", response).strip()
-        parsed = json.loads(cleaned)
+        parsed = json.loads(self._strip(response))
         parsed = self._normalize(parsed)
         self._validate(parsed)
         return parsed
@@ -32,21 +28,8 @@ class RequirementParserAgent:
                 str(v) for v in data["expected_result"].values()
             )
 
-        # edge_cases must be a list of strings
-        edge_cases = data.get("edge_cases") or []
-        normalized = []
-        for item in edge_cases:
-            if isinstance(item, dict):
-                normalized.append(", ".join(str(v) for v in item.values()))
-            else:
-                normalized.append(str(item))
-        data["edge_cases"] = normalized
-
-        # preconditions must be a list of strings
-        preconditions = data.get("preconditions") or []
-        data["preconditions"] = [
-            ", ".join(str(v) for v in p.values()) if isinstance(p, dict) else str(p)
-            for p in preconditions
-        ]
+        # edge_cases and preconditions must each be a list of strings
+        data["edge_cases"] = normalize_to_str_list(data.get("edge_cases"))
+        data["preconditions"] = normalize_to_str_list(data.get("preconditions"))
 
         return data

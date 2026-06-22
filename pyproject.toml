@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "ollama>=0.4.0",
     "behave>=1.2.6",
+    "playwright>=1.40.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
 ]
