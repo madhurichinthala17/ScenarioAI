@@ -19,9 +19,15 @@ dependencies = [
     "playwright>=1.40.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
+    # Runtime dependency: ValidatorAgent shells out to `ruff` to lint generated
+    # code, so it must be present in the pipeline (uv sync), not just in CI.
+    "ruff>=0.6.0",
 ]
 
-[project.optional-dependencies]
+# Dev/test tooling lives in a PEP 735 dependency group (not optional-dependencies,
+# which is for user-facing extras). `uv sync --dev` installs this group; ruff is a
+# main dependency because the pipeline lints generated code with it at runtime.
+[dependency-groups]
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.24.0",
