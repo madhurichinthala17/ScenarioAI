@@ -24,7 +24,11 @@ on:
         type: string
         default: "madhurichinthala17"
   issues:
-    types: [opened, labeled]
+    # Only `labeled` — GitHub fires a `labeled` event whether the label is added
+    # at issue creation OR later, so this covers both cases with exactly ONE run.
+    # (Adding `opened` too would double-fire when an issue is created with the
+    # label already applied, producing two branches and two PRs.)
+    types: [labeled]
 
 # Allow the workflow to push branches, open PRs, and comment back on the issue.
 permissions:
@@ -41,8 +45,7 @@ jobs:
     # spawn an LLM run and a PR.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.action == 'labeled' && github.event.label.name == 'scenarioai') ||
-      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'scenarioai'))
+      (github.event.action == 'labeled' && github.event.label.name == 'scenarioai')
 
     steps:
       - name: Checkout
