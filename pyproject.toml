@@ -17,8 +17,6 @@ dependencies = [
     "ollama>=0.4.0",
     "behave>=1.2.6",
     "playwright>=1.40.0",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.30.0",
     # Runtime dependency: ValidatorAgent shells out to `ruff` to lint generated
     # code, so it must be present in the pipeline (uv sync), not just in CI.
     "ruff>=0.6.0",

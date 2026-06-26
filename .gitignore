@@ -1,2 +1,15 @@
+# Virtualenv
 .venv/
+
+# Secrets
 .env
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.deepeval/
