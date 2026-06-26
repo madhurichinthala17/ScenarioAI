@@ -13,6 +13,7 @@ from src.agents.file_writer import FileWriterAgent
 from src.config import settings
 from src.core.llm_client import LLMClient
 from src.core.logger import get_logger
+from src.utils.file_types import page_class_name
 
 log = get_logger(__name__)
 
@@ -85,6 +86,7 @@ def build_graph():
         return {"pom_content": pom_agent.run(
             state["gherkin"],
             state["file_plan"]["functionality"],
+            page_class_name(state["file_plan"]["pages_file"]),
             state.get("exploration_report"),   # None when explorer was skipped
         )}
 

@@ -12,14 +12,14 @@ DECISION RULES:
 - OVERWRITE: new scenarios completely replace an existing file's purpose
 
 NAMING RULES:
-- Name by functionality domain, not by feature title
-- Login, logout, registration, password reset = "auth"
-- Search, filter, sort = "search"
-- Cart, checkout, payment = "checkout"
-- Profile, settings, account = "profile"
-- Use short lowercase single words only
+- Base "functionality" on the Feature being tested, as a short snake_case slug
+  e.g. "Subscribe to the newsletter" -> "subscribe_newsletter"
+  e.g. "User login" -> "login"
+- Use lowercase words joined by underscores, at most 3-4 words
 - Never use generic names like "test" or "feature"
 - File names MUST match the functionality field exactly
+(Note: the functionality slug is also re-derived from the Feature title after you
+respond, so keep it consistent with the actual feature.)
 
 RULES:
 - Output ONLY valid JSON, no explanations, no markdown

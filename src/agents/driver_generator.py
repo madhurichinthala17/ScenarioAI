@@ -1,6 +1,7 @@
 from src.agents.base import BaseAgent
 from src.prompts.driver_generator_prompt import SYSTEM_PROMPT
 from src.prompts.driver_consolidator_prompt import CONSOLIDATION_PROMPT
+from src.utils.file_types import page_class_name, page_module_name
 
 
 class DriverGeneratorAgent(BaseAgent):
@@ -10,13 +11,11 @@ class DriverGeneratorAgent(BaseAgent):
         functionality: str,
         pages_file: str
     ) -> str:
-        # Derive page module and class name from file plan
-        # pages/auth_page.py → auth_page → AuthPage
-        page_module = pages_file.replace("pages/", "").replace(".py", "")
-        class_name = "".join(
-            word.capitalize()
-            for word in page_module.split("_")
-        )
+        # Derive page module and class name from the file plan — shared helpers
+        # keep this identical to the POM and step generators (pages/auth_page.py
+        # → auth_page → AuthPage), so imports always resolve.
+        page_module = page_module_name(pages_file)
+        class_name = page_class_name(pages_file)
 
         user_prompt = f"""
         Generate a driver helper module for this functionality: {functionality}

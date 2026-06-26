@@ -19,3 +19,20 @@ def infer_file_type(file_path: str) -> str:
     if "driver" in p.stem or "helper" in p.stem or "driver" in str(p.parent):
         return "driver"
     return "python"
+
+
+def page_module_name(pages_file: str) -> str:
+    """pages/auth_page.py -> auth_page (the module name steps/driver import)."""
+    return pages_file.replace("pages/", "").replace(".py", "")
+
+
+def page_class_name(pages_file: str) -> str:
+    """pages/auth_page.py -> AuthPage.
+
+    Single source of truth for the POM class name. The pom_generator,
+    driver_generator and stepdefinition_generator MUST all derive the class
+    name the same way, otherwise the driver/steps import a class the POM never
+    defined (ImportError at behave --dry-run).
+    """
+    module = page_module_name(pages_file)
+    return "".join(word.capitalize() for word in module.split("_"))

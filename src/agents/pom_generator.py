@@ -7,7 +7,13 @@ from src.prompts.pom_consolidator_prompt import CONSOLIDATION_PROMPT
 
 
 class POMGeneratorAgent(BaseAgent):
-    def run(self, gherkin: str, functionality: str, exploration_report: Optional[dict] = None) -> str:
+    def run(
+        self,
+        gherkin: str,
+        functionality: str,
+        class_name: str,
+        exploration_report: Optional[dict] = None,
+    ) -> str:
         # When the Explorer ran, we have real locators from the live app.
         # Inject them so the LLM uses actual selectors instead of placeholders.
         locator_section = ""
@@ -19,8 +25,15 @@ class POMGeneratorAgent(BaseAgent):
                 Replace every `pass` with the matching real locator from the list above.
                 """
 
+        # class_name is derived from the file plan and shared with the driver and
+        # step generators — the class MUST be named exactly this or their imports
+        # (`from pages.<module> import <class_name>`) break.
         user_prompt = f"""
             Generate a Page Object Model class for this functionality: {functionality}
+
+            The class MUST be named exactly: {class_name}
+            (do not invent a different name — other modules import this exact name)
+
             Based on these Gherkin scenarios:
                 {gherkin}
                 {locator_section}
@@ -31,8 +44,10 @@ class POMGeneratorAgent(BaseAgent):
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
         cleaned = self._strip(response)
 
-        # Step 2 — Consolidate semantic duplicates using LLM
-        consolidation_prompt = f"""Review and consolidate this Page Object Model class:
+        # Step 2 — Consolidate semantic duplicates using LLM. Restate the class
+        # name so the consolidation pass can't quietly rename the class.
+        consolidation_prompt = f"""Review and consolidate this Page Object Model class.
+        Keep the class named exactly {class_name}.
 
         {cleaned}
 

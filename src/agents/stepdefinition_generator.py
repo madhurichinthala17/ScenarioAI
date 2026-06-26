@@ -1,5 +1,6 @@
 from src.agents.base import BaseAgent
 from src.prompts.stepdefinition_generator_prompt import SYSTEM_PROMPT
+from src.utils.file_types import page_class_name, page_module_name
 
 
 class StepDefinitionGeneratorAgent(BaseAgent):
@@ -14,12 +15,11 @@ class StepDefinitionGeneratorAgent(BaseAgent):
         pages_file = file_plan['pages_file']
         driver_file = file_plan['driver_file']
 
-        # Derive module and class names
-        page_module = pages_file.replace("pages/", "").replace(".py", "")
+        # Derive module and class names via shared helpers — must match the POM
+        # and driver generators exactly so imports resolve.
+        page_module = page_module_name(pages_file)
         driver_module = driver_file.replace("driver/", "").replace(".py", "")
-        class_name = "".join(
-            word.capitalize() for word in page_module.split("_")
-        )
+        class_name = page_class_name(pages_file)
 
         # Extract only method signatures from POM — not full code
         # Token optimization: don't send full implementation

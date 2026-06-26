@@ -17,6 +17,10 @@ STRICT RULES:
 - NEVER put business logic in step definitions
 - NEVER put assertions in Given or When steps
 - Use context object to share state between steps
+- Given steps MUST create the page object by calling a setup_ function with
+  context.page and storing the result: context.page_object = setup_x(context.page)
+- When and Then steps reuse that object via context.page_object — never reference
+  a page object that was not created in a Given step
 
 LAYER RESPONSIBILITY:
 - Given → sets up preconditions using driver setup_ functions
@@ -28,17 +32,17 @@ from behave import given, when, then
 from driver.<driver_module> import *
 
 DO NOT import the page class directly.
-Access it through context only: context.<page_object>
+Create it in the Given step from context.page and store it on context.page_object.
 
 @given("<exact gherkin step text>")
 def step_impl(context):
-    <driver_setup_function>(context.<page_object>)
+    context.page_object = <driver_setup_function>(context.page)
 
 @when("<exact gherkin step text>")
 def step_impl(context):
-    <driver_perform_function>(context.<page_object>, <args>)
+    <driver_perform_function>(context.page_object, <args>)
 
 @then("<exact gherkin step text>")
 def step_impl(context):
-    assert context.<page_object>.<is_or_get_method>()
+    assert context.page_object.<is_or_get_method>() == <expected_value>
 """

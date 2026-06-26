@@ -24,6 +24,10 @@ FUNCTION DESIGN RULES:
 - Only create separate functions when the UI flow genuinely differs in steps
 - Functions that establish preconditions are prefixed with setup_
 - Functions that execute multi-step flows are prefixed with perform_
+- setup_ functions receive the Playwright `page`, instantiate the page object,
+  perform the setup steps, and RETURN the page object so the step definition can
+  store it on the behave context
+- perform_ functions receive the already-created page object as their first argument
 
 WHAT BELONGS IN THE DRIVER:
 - Multi-step flows that appear across multiple scenarios
@@ -40,8 +44,10 @@ WHAT DOES NOT BELONG IN THE DRIVER:
 Output format:
 from pages.<page_module> import <PageClass>
 
-def setup_<action>(page_object: <PageClass>) -> None:
+def setup_<action>(page) -> <PageClass>:
+    page_object = <PageClass>(page)
     page_object.<method>()
+    return page_object
 
 def perform_<flow>(page_object: <PageClass>, <args>) -> None:
     page_object.<method>(<args>)
