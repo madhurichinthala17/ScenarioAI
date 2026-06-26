@@ -1,76 +1,43 @@
+# =============================================================================
+# WARNING: ScenarioAI validation failed — this file was written as FAIL-OPEN
+# Review the errors listed in the PR description before merging.
+# =============================================================================
+
 from behave import given, when, then
 from driver.auth_helper import *
 
-@given("the user navigates to the login page")
+@given("the user is on the signup form")
 def step_impl(context):
-    setup_navigate_to_login_page(context.AuthPage)
+    setup_navigate_to_signup_form(context.auth_page)
 
-@when("the user enters valid email and password")
+@when("the user enters a valid email address and submits the form")
 def step_impl(context):
-    perform_enter_credentials(context.AuthPage, "valid.email@example.com", "validpassword")
+    perform_subscribe_to_newsletter(context.auth_page, "valid@example.com")
 
-@then("the user is redirected to the dashboard")
+@then("the user sees \"Thanks for subscribing!\"")
 def step_impl(context):
-    assert context.AuthPage.see_dashboard()
+    assert context.auth_page.is_subscription_success_message_visible()
 
-@given("the user navigates to the login page")
+@when("the user enters an invalid email address and submits the form")
 def step_impl(context):
-    setup_navigate_to_login_page(context.AuthPage)
+    perform_subscribe_to_newsletter(context.auth_page, "invalid-email")
 
-@when("the user enters an invalid email or password")
+@then("the user sees \"Please enter a valid email address\"")
 def step_impl(context):
-    perform_enter_credentials(context.AuthPage, "invalid.email@example.com", "wrongpassword")
+    assert context.auth_page.is_invalid_email_message_visible()
 
-@then("the user sees the error message 'Invalid email or password'")
+@when("the user enters an email address that is already on the list and submits the form")
 def step_impl(context):
-    assert context.AuthPage.see_error_message("Invalid email or password")
+    perform_subscribe_to_newsletter(context.auth_page, "already@registered.com")
 
-@given("the user navigates to the login page")
+@then("the user sees \"You're already on the list\"")
 def step_impl(context):
-    setup_navigate_to_login_page(context.AuthPage)
+    assert context.auth_page.is_already_registered_message_visible()
 
-@when("the user leaves the email field empty and enters a password")
+@when("the user submits the form without entering an email address")
 def step_impl(context):
-    context.AuthPage.leave_field_empty_and_enter_value("email", "testpassword")
+    perform_subscribe_to_newsletter(context.auth_page, "")
 
-@then("the user sees a validation error for the email field")
+@then("the user sees \"Email is required\"")
 def step_impl(context):
-    assert context.AuthPage.see_validation_error_for_field("email")
-
-@given("the user navigates to the login page")
-def step_impl(context):
-    setup_navigate_to_login_page(context.AuthPage)
-
-@when("the user leaves the password field empty and enters an email")
-def step_impl(context):
-    context.AuthPage.leave_field_empty_and_enter_value("password", "testemail@example.com")
-
-@then("the user sees a validation error for the password field")
-def step_impl(context):
-    assert context.AuthPage.see_validation_error_for_field("password")
-
-@given("the user navigates to the login page")
-def step_impl(context):
-    setup_navigate_to_login_page(context.AuthPage)
-
-@when("the user leaves both the email and password fields empty")
-def step_impl(context):
-    context.AuthPage.leave_field_empty_and_enter_value("email", "")
-    context.AuthPage.leave_field_empty_and_enter_value("password", "")
-
-@then("the user sees validation errors for both the email and password fields")
-def step_impl(context):
-    assert context.AuthPage.see_validation_error_for_field("email") and context.AuthPage.see_validation_error_for_field("password")
-
-@given("the user navigates to the login page")
-def step_impl(context):
-    setup_navigate_to_login_page(context.AuthPage)
-
-@when("the user enters invalid credentials more than 5 times")
-def step_impl(context):
-    for _ in range(6):
-        perform_enter_credentials(context.AuthPage, "invalid.email@example.com", "wrongpassword")
-
-@then("the account is locked and the user sees the message 'Account locked. Please contact support'")
-def step_impl(context):
-    assert context.AuthPage.account_is_locked_and_see_message("Account locked. Please contact support")
+    assert context.auth_page.is_email_required_message_visible()
