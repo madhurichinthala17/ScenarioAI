@@ -1,31 +1,21 @@
-Feature: Log in to the application
+Feature: Subscribe to the newsletter
 
-Scenario: User logs in with valid credentials
-    Given the user navigates to the login page
-    When the user enters valid email and password
-    Then the user is redirected to the dashboard
+  Scenario: User successfully subscribes to the newsletter
+    Given the user is on the signup form
+    When the user enters a valid email address and submits the form
+    Then the user sees "Thanks for subscribing!"
 
-Scenario: User enters invalid email or password
-    Given the user navigates to the login page
-    When the user enters an invalid email or password
-    Then the user sees the error message 'Invalid email or password'
+  Scenario: User submits an invalid email address
+    Given the user is on the signup form
+    When the user enters an invalid email address and submits the form
+    Then the user sees "Please enter a valid email address"
 
-Scenario: User leaves email field empty and provides a password
-    Given the user navigates to the login page
-    When the user leaves the email field empty and enters a password
-    Then the user sees a validation error for the email field
+  Scenario: User tries to subscribe with an already registered email
+    Given the user is on the signup form
+    When the user enters an email address that is already on the list and submits the form
+    Then the user sees "You're already on the list"
 
-Scenario: User leaves password field empty and provides an email
-    Given the user navigates to the login page
-    When the user leaves the password field empty and enters an email
-    Then the user sees a validation error for the password field
-
-Scenario: User leaves both fields empty
-    Given the user navigates to the login page
-    When the user leaves both the email and password fields empty
-    Then the user sees validation errors for both the email and password fields
-
-Scenario: User fails login attempts more than 5 times
-    Given the user navigates to the login page
-    When the user enters invalid credentials more than 5 times
-    Then the account is locked and the user sees the message 'Account locked. Please contact support'
+  Scenario: User submits the form without an email address
+    Given the user is on the signup form
+    When the user submits the form without entering an email address
+    Then the user sees "Email is required"
