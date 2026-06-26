@@ -1,9 +1,13 @@
-# Manually triggered workflow that:
-#   1. Runs the ScenarioAI pipeline with your requirement
-#   2. Commits the generated test files to a new branch
-#   3. Opens a draft PR and adds you as reviewer
+# Generates a BDD test suite and opens a draft PR. Two ways to trigger:
 #
-# How to trigger: GitHub → Actions tab → "Generate BDD Tests" → Run workflow
+#   1. Automatically — open (or label) an Issue with the `scenarioai` label.
+#      The issue body becomes the requirement; the issue author becomes the
+#      reviewer; the resulting PR is linked back to the issue.
+#
+#   2. Manually — Actions tab → "Generate BDD Tests" → Run workflow.
+#
+# NOTE: create a label named `scenarioai` in the repo (Issues → Labels) first,
+# otherwise the auto-trigger condition can never match.
 
 name: Generate BDD Tests
 
@@ -19,16 +23,26 @@ on:
         required: false
         type: string
         default: "madhurichinthala17"
+  issues:
+    types: [opened, labeled]
 
-# These permissions allow the workflow to push branches and open PRs.
-# Without them GITHUB_TOKEN is read-only and both operations would fail with 403.
+# Allow the workflow to push branches, open PRs, and comment back on the issue.
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
+
+    # Manual runs always proceed. Issue-triggered runs only proceed when the
+    # `scenarioai` label is present — so random bug reports or questions don't
+    # spawn an LLM run and a PR.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'scenarioai') ||
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'scenarioai'))
 
     steps:
       - name: Checkout
@@ -45,35 +59,59 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # Slugify the requirement into a valid branch name using Python (already installed).
-      # Example: "Users can log in" → "scenarioai/users-can-log-in-20260617-143022"
-      # We write to $GITHUB_OUTPUT so later steps can read it as steps.branch.outputs.name
+      - name: Resolve inputs
+        id: input
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_REQ: ${{ github.event.inputs.requirement }}
+          DISPATCH_REVIEWER: ${{ github.event.inputs.reviewer }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            REQ="$DISPATCH_REQ"
+            REVIEWER="$DISPATCH_REVIEWER"
+          else
+            REQ="$ISSUE_BODY"
+            REVIEWER="$ISSUE_AUTHOR"
+          fi
+
+          if [ -z "$(printf '%s' "$REQ" | tr -d '[:space:]')" ]; then
+            echo "ERROR: requirement (issue body / input) is empty"
+            exit 1
+          fi
+
+          {
+            echo "requirement<<SCENARIOAI_EOF"
+            printf '%s\n' "$REQ"
+            echo "SCENARIOAI_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "reviewer=$REVIEWER" >> "$GITHUB_OUTPUT"
+
       - name: Generate branch name
         id: branch
+        env:
+          REQUIREMENT: ${{ steps.input.outputs.requirement }}
         run: |
           SLUG=$(python -c "
-          import re, sys
-          req = sys.argv[1]
+          import os, re
+          req = os.environ['REQUIREMENT']
           slug = re.sub(r'[^a-z0-9]+', '-', req.lower()).strip('-')[:40].rstrip('-')
-          print(slug)
-          " "${{ inputs.requirement }}")
+          print(slug or 'requirement')
+          ")
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-          echo "name=scenarioai/${SLUG}-${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "name=scenarioai/${SLUG}-${TIMESTAMP}" >> "$GITHUB_OUTPUT"
 
       - name: Create branch
         run: git checkout -b "${{ steps.branch.outputs.name }}"
 
-      # Runs the ScenarioAI pipeline.
-      # LLM env vars come from GitHub Secrets (Settings → Secrets → Actions).
-      # OPENAI_API_KEY is never visible in logs — GitHub automatically masks secret values.
-      # Exit code 1 from main.py means validation failed → this step fails →
-      # the commit and PR steps are skipped automatically by GitHub Actions.
       - name: Run ScenarioAI pipeline
         env:
           LLM_PROVIDER: openai
           LLM_MODEL: gpt-4.1-nano
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run python -m src.main --requirement "${{ inputs.requirement }}"
+          REQUIREMENT: ${{ steps.input.outputs.requirement }}
+        run: uv run python -m src.main --requirement "$REQUIREMENT"
 
       # Safety check: if somehow no files changed, exit before creating an empty PR
       - name: Verify files were generated
@@ -86,36 +124,48 @@ jobs:
           git status --short generated_tests/
 
       - name: Commit generated files
+        env:
+          REQUIREMENT: ${{ steps.input.outputs.requirement }}
+          ACTOR: ${{ github.actor }}
         run: |
           git config user.name "ScenarioAI Bot"
           git config user.email "scenarioai-bot@users.noreply.github.com"
           git add generated_tests/
-          git commit -m "feat: generated BDD tests
-
-          Requirement: ${{ inputs.requirement }}
-
-          Generated by ScenarioAI pipeline
-          Triggered by: @${{ github.actor }}"
+          git commit -m "feat: generated BDD tests" \
+                     -m "Requirement: $REQUIREMENT" \
+                     -m "Generated by ScenarioAI pipeline" \
+                     -m "Triggered by: @$ACTOR"
 
       - name: Push branch
         run: git push origin "${{ steps.branch.outputs.name }}"
 
-      # gh CLI is pre-installed on all GitHub-hosted runners and authenticated via GH_TOKEN.
-      # --draft means the PR is created but cannot be merged until a human marks it ready.
-      # We capture the PR URL so the next step can add the reviewer to the same PR.
+
       - name: Create draft PR
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUIREMENT: ${{ steps.input.outputs.requirement }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          HEAD_BRANCH: ${{ steps.branch.outputs.name }}
         run: |
-          PR_URL=$(gh pr create \
-            --title "feat: BDD tests — $(echo "${{ inputs.requirement }}" | cut -c1-60)" \
-            --body "## Generated BDD Tests
+          TITLE="feat: BDD tests — $(printf '%s' "$REQUIREMENT" | head -n1 | cut -c1-60)"
+
+          BODY="## Generated BDD Tests
 
           **Requirement:**
-          > ${{ inputs.requirement }}
+          > $REQUIREMENT
 
-          **Triggered by:** @${{ github.actor }}
+          **Triggered by:** @$ACTOR"
+
+          # If an issue triggered this, link it so merging the PR closes the issue.
+          if [ -n "$ISSUE_NUMBER" ]; then
+            BODY="$BODY
+
+          Closes #$ISSUE_NUMBER"
+          fi
+
+          BODY="$BODY
 
           ---
 
@@ -125,19 +175,26 @@ jobs:
           - [ ] Step definitions are complete
           - [ ] Page Object Model methods are correct
 
-          > **Note:** This is a draft PR — review and edit the generated files, then mark ready to merge." \
-            --draft \
-            --head "${{ steps.branch.outputs.name }}")
+          > **Note:** This is a draft PR — review and edit the generated files, then mark ready to merge."
 
+          PR_URL=$(gh pr create --title "$TITLE" --body "$BODY" --draft --head "$HEAD_BRANCH")
           echo "Generated PR: $PR_URL"
-          # Write PR URL to output so the reviewer step can reference it
-          echo "url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
 
-      # Only runs if a reviewer was specified in the workflow inputs
       - name: Add reviewer
-        if: inputs.reviewer != ''
+        if: steps.input.outputs.reviewer != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWER: ${{ steps.input.outputs.reviewer }}
+        run: gh pr edit "${{ steps.pr.outputs.url }}" --add-reviewer "$REVIEWER"
+
+
+      - name: Comment PR link on issue
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_URL: ${{ steps.pr.outputs.url }}
         run: |
-          gh pr edit "${{ steps.pr.outputs.url }}" \
-            --add-reviewer "${{ inputs.reviewer }}"
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "🤖 **ScenarioAI** generated a draft PR for this issue: $PR_URL"
