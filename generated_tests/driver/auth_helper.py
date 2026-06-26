@@ -1,16 +1,13 @@
+# =============================================================================
+# WARNING: ScenarioAI validation failed — this file was written as FAIL-OPEN
+# Review the errors listed in the PR description before merging.
+# =============================================================================
+
 from pages.auth_page import AuthPage
 
-def setup_navigate_to_login_page(page_object: AuthPage) -> None:
-    page_object.navigate()
+def setup_navigate_to_signup_form(page_object: AuthPage) -> None:
+    page_object.navigate_to_signup_form()
 
-def perform_enter_credentials(page_object: AuthPage, email: str, password: str) -> None:
+def perform_subscribe_to_newsletter(page_object: AuthPage, email: str) -> None:
     page_object.enter_email(email)
-    page_object.enter_password(password)
-
-def perform_validate_and_submit(page_object: AuthPage) -> None:
     page_object.submit_form()
-
-def setup_account_lockout(page_object: AuthPage) -> None:
-    for _ in range(5):
-        perform_enter_credentials(page_object, "invalid@example.com", "wrongpassword")
-        perform_validate_and_submit(page_object)
