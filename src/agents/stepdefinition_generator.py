@@ -51,7 +51,7 @@ class StepDefinitionGeneratorAgent(BaseAgent):
 
         response = self.llm.invoke(SYSTEM_PROMPT, user_prompt)
         cleaned = self._strip(response)
-        self._validate(cleaned)
+        self._soft_validate(cleaned)
         return cleaned
 
     def _extract_signatures(self, code: str) -> str:

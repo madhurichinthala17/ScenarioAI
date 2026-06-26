@@ -6,7 +6,8 @@
 #
 #   2. Manually — Actions tab → "Generate BDD Tests" → Run workflow.
 #
-# NOTE: create a label named `scenarioai` in the repo (Issues → Labels) first,
+# NOTE: create a label named `
+#` in the repo (Issues → Labels) first,
 # otherwise the auto-trigger condition can never match.
 
 name: Generate BDD Tests
@@ -111,7 +112,7 @@ jobs:
       - name: Run ScenarioAI pipeline
         env:
           LLM_PROVIDER: openai
-          LLM_MODEL: gpt-4.1-nano
+          LLM_MODEL: gpt-4o-mini
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           REQUIREMENT: ${{ steps.input.outputs.requirement }}
         run: uv run python -m src.main --requirement "$REQUIREMENT"

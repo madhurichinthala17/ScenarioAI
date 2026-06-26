@@ -48,7 +48,7 @@ class DriverGeneratorAgent(BaseAgent):
         consolidated = self.llm.invoke(CONSOLIDATION_PROMPT, consolidation_prompt)
         final_driver = self._strip(consolidated)
 
-        self._validate(final_driver)
+        self._soft_validate(final_driver)
         return final_driver
     
     def _validate(self, code: str):

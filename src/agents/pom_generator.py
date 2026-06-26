@@ -40,7 +40,7 @@ class POMGeneratorAgent(BaseAgent):
         """
         consolidated_response = self.llm.invoke(CONSOLIDATION_PROMPT, consolidation_prompt)
         final_pom = self._strip(consolidated_response)
-        self._validate(final_pom)
+        self._soft_validate(final_pom)
         return final_pom
 
     def _validate(self, code: str):

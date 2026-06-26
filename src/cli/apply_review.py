@@ -81,7 +81,12 @@ if __name__ == "__main__":
         file_type = infer_file_type(file_path)
 
         log.info("Fixing %s (%d comment(s))...", file_path, len(comments))
-        fixed = agent.run(original, file_type, comments)
+        # ReviewAgent.run expects a single comment string. Join all of this
+        # file's inline comments into one bulleted block so the agent applies
+        # every reviewer note in a single pass (passing the raw list would
+        # render a Python list-repr into the prompt).
+        combined_comment = "\n".join(f"- {c}" for c in comments)
+        fixed = agent.run(original, file_type, combined_comment)
 
         p.write_text(fixed, encoding="utf-8")
         files_fixed.append(file_path)

@@ -28,6 +28,7 @@ class ValidatorAgent:
         phase1_errors.extend(self._check_python_syntax(driver_content, "Driver"))
         phase1_errors.extend(self._check_python_syntax(steps_content, "Steps"))
         phase1_errors.extend(self._check_pom_purity(pom_content))
+        phase1_errors.extend(self._check_driver_purity(driver_content))
         phase1_errors.extend(self._check_step_purity(steps_content))
         phase1_errors.extend(self._check_step_coverage(gherkin, steps_content))
         phase1_errors.extend(self._check_method_existence(pom_content, steps_content))
@@ -215,6 +216,23 @@ class ValidatorAgent:
             if pattern in pom_content:
                 errors.append(
                     f"POM purity: Found '{pattern}' — assertions not allowed in page objects"
+                )
+        return errors
+
+    # ─── Driver purity ────────────────────────────────────────────
+
+    def _check_driver_purity(self, driver_content: str) -> List[str]:
+        errors = []
+        forbidden_playwright = [
+            "page.click", "page.fill",
+            "page.goto", "page.locator",
+            "page.get_by",
+        ]
+        for pattern in forbidden_playwright:
+            if pattern in driver_content:
+                errors.append(
+                    f"Driver purity: Found '{pattern}' — driver helpers must call "
+                    "page object methods, not raw Playwright"
                 )
         return errors
 

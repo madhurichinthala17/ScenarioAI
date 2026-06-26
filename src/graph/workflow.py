@@ -119,7 +119,7 @@ def build_graph():
             errors = result["errors"]
             if any("POM" in e or "Method existence" in e for e in errors):
                 failed_agent = "pom_generator"
-            elif any("Driver existence" in e for e in errors):
+            elif any("Driver existence" in e or "Driver purity" in e for e in errors):
                 failed_agent = "driver_generator"
             elif any("Step coverage" in e or "Phase 2" in e for e in errors):
                 failed_agent = "step_definition_generator"
